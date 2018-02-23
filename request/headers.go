@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"reflect"
 
-	"github.com/dihedron/go-log/log"
 	"github.com/fatih/structs"
 )
 
@@ -83,11 +82,17 @@ type StructHeadersProvider struct {
 
 // SetSource sets the
 func (p *StructHeadersProvider) SetSource(source interface{}) *StructHeadersProvider {
-	if reflect.TypeOf(source).Elem().Kind() != reflect.Struct {
-		panic("only structs can be passed as headers provider")
+	switch reflect.ValueOf(source).Kind() {
+	case reflect.Struct:
+		p.source = source
+		return p
+	case reflect.Ptr:
+		if reflect.ValueOf(source).Elem().Kind() == reflect.Struct {
+			p.source = reflect.ValueOf(source).Elem()
+			return p
+		}
 	}
-	p.source = source
-	return p
+	panic("only structs can be passed as headers provider")
 }
 
 // GetHeaders extracts the headers from the source struct and returns them.
@@ -100,10 +105,8 @@ func (p *StructHeadersProvider) GetHeaders() Headers {
 // encountered, it is scanned for values.
 func getHeaders(source interface{}) Headers {
 	headers := map[string][]string{}
-	log.Debugf("looking for 'header' tags...")
 	for _, field := range structs.Fields(source) {
 		if field.IsEmbedded() || field.Kind() == reflect.Struct {
-			log.Debugf("recursing to struct..")
 			for k, v := range getHeaders(field.Value()) {
 				if values, ok := headers[k]; ok {
 					headers[k] = append(values, v...)
@@ -111,12 +114,10 @@ func getHeaders(source interface{}) Headers {
 					headers[k] = v
 				}
 			}
-			log.Debugf("done recursive call")
 		} else {
 			tag := field.Tag("header")
 			if tag != "" {
 				value := field.Value().(string)
-				log.Debugf("adding header %q => %v", tag, value)
 				if values, ok := headers[tag]; ok {
 					headers[tag] = append(values, value)
 				} else {
