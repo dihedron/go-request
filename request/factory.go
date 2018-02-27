@@ -5,37 +5,29 @@
 package request
 
 import (
-	"io"
 	"net/http"
 )
 
 // Factory is the HTTP request factory.
 type Factory struct {
 	// client is the HTTP client that will make the requests.
-	client http.Client
-	// method is the request's HTTP method (GET, POST, etc.).
-	method string
-	// raw url string for requests
-	url string
+	Client *http.Client
 
-	headers HeadersProvider
+	// baseURL is the base UTL for generating relative URL requests.
+	BaseURL string
 
-	parameters ParametersProvider
+	Headers []*ValueProvider
 
-	entity EntityProvider
+	Parameters []*ValueProvider
+
+	Entity *EntityProvider
 }
 
-type Parameters map[string]interface{}
-
-type ParametersProvider interface {
-	ProvideParameters() Parameters
-}
-
-type Entity struct {
-	ContentType string
-	Reader      io.Reader
-}
-
-type EntityProvider interface {
-	ProvideEntity() Entity
+func NewFactory(client *http.Client, baseURL string) *Factory {
+	return &Factory{
+		Client:     client,
+		BaseURL:    baseURL,
+		Headers:    []*ValueProvider{},
+		Parameters: []*ValueProvider{},
+	}
 }
