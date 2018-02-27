@@ -6,6 +6,7 @@ package request
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"io/ioutil"
 	"testing"
 )
@@ -141,4 +142,62 @@ func TestJSONProviderProvideNoPtr(t *testing.T) {
 		Entity: &s,
 	}
 	provider.Provide()
+}
+
+const expectedPersonXML = `<Person>
+  <name>John</name>
+  <surname>Doe</surname>
+  <address>
+    <street>Madison ave.</street>
+    <number>123</number>
+    <zip>00123</zip>
+  </address>
+</Person>`
+
+func TestXMLProviderProvideStruct(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
+	type Address struct {
+		Street  string `xml:"street,omitempty"`
+		No      int    `xml:"number,omitempty"`
+		ZIPCode string `xml:"zip,omitempy"`
+	}
+
+	type Person struct {
+		Name    string  `xml:"name,omitempty"`
+		Surname string  `xml:"surname,omitempty"`
+		Address Address `xml:"address,omitempty"`
+	}
+
+	provider := &XMLProvider{
+		Entity: Person{
+			Name:    "John",
+			Surname: "Doe",
+			Address: Address{
+				Street:  "Madison ave.",
+				No:      123,
+				ZIPCode: "00123",
+			},
+		},
+	}
+	entity, err := provider.Provide()
+
+	if err != nil {
+		t.Fatalf("error encoding to XML: %v", err)
+	}
+
+	if entity.ContentType != "application/xml" {
+		t.Fatalf("invalid content type returned: %v", entity.ContentType)
+	}
+
+	data, _ := ioutil.ReadAll(entity.Reader)
+	person := &Person{}
+	xml.Unmarshal(data, person)
+	actual, _ := xml.MarshalIndent(person, "", "  ")
+
+	if string(actual) != expectedPersonJSON {
+		t.Fatalf("invalid XML roundtrip: expected:\n%s\nactual:\n%s", expectedPersonXML, string(actual))
+	}
 }
