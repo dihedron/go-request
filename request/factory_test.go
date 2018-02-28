@@ -27,7 +27,7 @@ func TestFactory(t *testing.T) {
 	request, _ := New("GET", "http://www.repubblica.it").UserAgent("MyCrawler/1.0").Make()
 	response, err := client.Do(request)
 	if err != nil {
-		t.Fatalf("no network connectio: %v", err)
+		t.Fatalf("no network connection: %v", err)
 	}
 	defer response.Body.Close()
 	body, err := ioutil.ReadAll(response.Body)
