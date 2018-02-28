@@ -67,6 +67,17 @@ func TestJSONProviderProvideStruct(t *testing.T) {
 	if string(actual) != expectedPersonJSON {
 		t.Fatalf("invalid JSON roundtrip: expected:\n%s\nactual:\n%s", expectedPersonJSON, string(actual))
 	}
+
+	// now use custom content type
+	provider.ContentType = "application/my-format"
+	entity, err = provider.Provide()
+	if err != nil {
+		t.Fatalf("error encoding to JSON with custom content-type: %v", err)
+	}
+
+	if entity.ContentType != "application/my-format" {
+		t.Fatalf("invalid content type returned: %v", entity.ContentType)
+	}
 }
 
 func TestJSONProviderProvidePtr(t *testing.T) {
@@ -197,7 +208,93 @@ func TestXMLProviderProvideStruct(t *testing.T) {
 	xml.Unmarshal(data, person)
 	actual, _ := xml.MarshalIndent(person, "", "  ")
 
-	if string(actual) != expectedPersonJSON {
-		t.Fatalf("invalid XML roundtrip: expected:\n%s\nactual:\n%s", expectedPersonXML, string(actual))
+	if string(actual) != expectedPersonXML {
+		t.Fatalf("invalid XML roundtrip: expected:\n%q\nactual:\n%q", expectedPersonXML, string(actual))
 	}
+
+	provider.ContentType = "application/my-format"
+	entity, err = provider.Provide()
+
+	if err != nil {
+		t.Fatalf("error encoding to XML with custom content type: %v", err)
+	}
+
+	if entity.ContentType != "application/my-format" {
+		t.Fatalf("invalid content type returned: %v", entity.ContentType)
+	}
+}
+
+func TestXMLProviderProvidePtr(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
+	type Address struct {
+		Street  string `xml:"street,omitempty"`
+		No      int    `xml:"number,omitempty"`
+		ZIPCode string `xml:"zip,omitempy"`
+	}
+
+	type Person struct {
+		Name    string  `xml:"name,omitempty"`
+		Surname string  `xml:"surname,omitempty"`
+		Address Address `xml:"address,omitempty"`
+	}
+
+	provider := &XMLProvider{
+		Entity: &Person{
+			Name:    "John",
+			Surname: "Doe",
+			Address: Address{
+				Street:  "Madison ave.",
+				No:      123,
+				ZIPCode: "00123",
+			},
+		},
+	}
+	entity, err := provider.Provide()
+
+	if err != nil {
+		t.Fatalf("error encoding to XML: %v", err)
+	}
+
+	if entity.ContentType != "application/xml" {
+		t.Fatalf("invalid content type returned: %v", entity.ContentType)
+	}
+
+	data, _ := ioutil.ReadAll(entity.Reader)
+	person := &Person{}
+	xml.Unmarshal(data, person)
+	actual, _ := xml.MarshalIndent(person, "", "  ")
+
+	if string(actual) != expectedPersonXML {
+		t.Fatalf("invalid XML roundtrip: expected:\n%q\nactual:\n%q", expectedPersonXML, string(actual))
+	}
+}
+
+func TestXMLProviderProvideNoStruct(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
+	defer handler("only structs can be passed as providers", t)
+
+	provider := &XMLProvider{
+		Entity: "no_struct",
+	}
+	provider.Provide()
+}
+
+func TestXMLProviderProvideNoPtr(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
+	defer handler("only structs can be passed as providers", t)
+
+	s := "no_struct"
+	provider := &XMLProvider{
+		Entity: &s,
+	}
+	provider.Provide()
 }
