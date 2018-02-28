@@ -22,7 +22,7 @@ type JSONProvider struct {
 
 // Provide converts a struct or a struct pointer to a JSON document, and returns
 // an entity containing the JSON in serialised form.
-func (p *JSONProvider) Provide() (*Entity, error) {
+func (p JSONProvider) Provide() (*Entity, error) {
 	var source interface{}
 	switch reflect.ValueOf(p.Entity).Kind() {
 	case reflect.Struct:
@@ -63,7 +63,7 @@ type XMLProvider struct {
 
 // Provide converts a struct or a struct pointer to an XML document, and returns
 // an entity containing the XML in serialised form.
-func (p *XMLProvider) Provide() (*Entity, error) {
+func (p XMLProvider) Provide() (*Entity, error) {
 	var source interface{}
 	switch reflect.ValueOf(p.Entity).Kind() {
 	case reflect.Struct:
