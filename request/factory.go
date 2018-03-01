@@ -16,9 +16,6 @@ import (
 // is generated, it will share the Method and BaseURL by value and all other
 // firlds by pointer, so any change in sub-factories will affect the parent too.
 type Factory struct {
-	// // client is the HTTP client that will make the requests.
-	// client *http.Client
-
 	// userAgent is the value for the UserAgent header.
 	userAgent string
 
