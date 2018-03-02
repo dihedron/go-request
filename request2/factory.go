@@ -58,9 +58,9 @@ type Factory struct {
 	body io.Reader
 }
 
-// NewFactory returns a request factory; the URL can be omitted and specified
+// New returns a new request factory; the URL can be omitted and specified
 // later via Base() or Path().
-func NewFactory(url string) *Factory {
+func New(url string) *Factory {
 	return &Factory{
 		method:     http.MethodGet,
 		url:        url,
