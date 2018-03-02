@@ -317,7 +317,7 @@ func (f *Factory) WithXMLEntity(entity interface{}) io.Reader {
 	}
 
 	if f.headers.Get("Content-Type") == "" {
-		f.ContentType("application/xml")
+		f.ContentType("text/xml")
 	}
 
 	return bytes.NewReader(data)

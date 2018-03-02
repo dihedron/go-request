@@ -179,3 +179,80 @@ func TestOp(t *testing.T) {
 		}
 	}
 }
+
+func TestAddQueryParameter(t *testing.T) {
+	f := New("").Add().QueryParameter("key", "value1", "value2")
+	if len(f.parameters) != 1 {
+		t.Fatalf("error adding query parameters: expected 1, got %d", len(f.parameters))
+	}
+	if len(f.parameters["key"]) != 2 {
+		t.Fatalf("error adding query parameters: expected 2, got %d", len(f.parameters["key"]))
+	}
+	if f.parameters["key"][0] != "value1" {
+		t.Fatalf("error adding query parameters: expected \"value1\", got %q", f.parameters["key"][0])
+	}
+	if f.parameters["key"][1] != "value2" {
+		t.Fatalf("error adding query parameters: expected \"value2\", got %q", f.parameters["key"][1])
+	}
+	// now add one more
+	f.QueryParameter("key", "value3")
+	if len(f.parameters) != 1 {
+		t.Fatalf("error adding query parameters: expected 1, got %d", len(f.parameters))
+	}
+	if len(f.parameters["key"]) != 3 {
+		t.Fatalf("error adding query parameters: expected 3, got %d", len(f.parameters["key"]))
+	}
+	if f.parameters["key"][0] != "value1" {
+		t.Fatalf("error adding query parameters: expected \"value1\", got %q", f.parameters["key"][0])
+	}
+	if f.parameters["key"][1] != "value2" {
+		t.Fatalf("error adding query parameters: expected \"value2\", got %q", f.parameters["key"][1])
+	}
+	if f.parameters["key"][2] != "value3" {
+		t.Fatalf("error adding query parameters: expected \"value3\", got %q", f.parameters["key"][2])
+	}
+}
+
+func TestSetQueryParameter(t *testing.T) {
+	f := New("").Add().QueryParameter("key", "value1", "value2")
+	f.Set().QueryParameter("key", "value0", "value1", "value2", "value3")
+	if len(f.parameters) != 1 {
+		t.Fatalf("error setting query parameters: expected 1, got %d", len(f.parameters))
+	}
+	if len(f.parameters["key"]) != 4 {
+		t.Fatalf("error setting query parameters: expected 4, got %d", len(f.parameters["key"]))
+	}
+	if f.parameters["key"][0] != "value0" {
+		t.Fatalf("error setting query parameters: expected \"value0\", got %q", f.parameters["key"][0])
+	}
+	if f.parameters["key"][1] != "value1" {
+		t.Fatalf("error setting query parameters: expected \"value1\", got %q", f.parameters["key"][1])
+	}
+	if f.parameters["key"][2] != "value2" {
+		t.Fatalf("error setting query parameters: expected \"value2\", got %q", f.parameters["key"][2])
+	}
+	if f.parameters["key"][3] != "value3" {
+		t.Fatalf("error setting query parameters: expected \"value3\", got %q", f.parameters["key"][3])
+	}
+}
+
+func TestDelQueryParameter(t *testing.T) {
+	f := New("").Add().QueryParameter("key", "value1", "value2")
+	f.Del().QueryParameter("key")
+	if len(f.parameters) != 0 {
+		t.Fatalf("error deleting query parameters: expected 0, got %d", len(f.parameters))
+	}
+}
+
+func TestRemQueryParameter(t *testing.T) {
+	f := New("").
+		Add().
+		QueryParameter("key1", "value1", "value2").
+		QueryParameter("key2", "value1", "value2").
+		QueryParameter("key3", "value1", "value2").
+		QueryParameter("another_key", "value1", "value2")
+	f.Remove().QueryParameter("^key\\d$")
+	if len(f.parameters) != 1 {
+		t.Fatalf("error removing multiple query parameters: expected 1, got %d", len(f.parameters))
+	}
+}
