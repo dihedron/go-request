@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -57,10 +58,11 @@ type Factory struct {
 	body io.Reader
 }
 
-// New returns a request factory.
-func New(method, url string) *Factory {
+// NewFactory returns a request factory; the URL can be omitted and specified
+// later via Base() or Path().
+func NewFactory(url string) *Factory {
 	return &Factory{
-		method:     method,
+		method:     http.MethodGet,
 		url:        url,
 		headers:    map[string][]string{},
 		parameters: map[string][]string{},
@@ -193,42 +195,35 @@ func (f *Factory) QueryParameter(key string, values ...string) *Factory {
 }
 
 func (f *Factory) QueryParametersFrom(source interface{}) *Factory {
+	var m map[string][]string
 	switch reflect.ValueOf(source).Kind() {
 	case reflect.Struct:
-		// do nothing, source is already a struct
+		m = getQueryParametersFromStruct(source)
 	case reflect.Map:
-		if m, ok := source.(map[string][]string); ok {
-			for key, values := range m {
-				for _, value := range values {
-					f.parameters.Add(key, value)
-				}
-			}
+		var ok bool
+		if m, ok = source.(map[string][]string); ok {
+			panic("only structs and maps can be passed as sources for query parameters")
 		}
 	case reflect.Ptr:
 		if reflect.ValueOf(source).Elem().Kind() == reflect.Struct {
 			source = reflect.ValueOf(source).Elem().Interface()
+			m = getQueryParametersFromStruct(source)
 		} else if reflect.ValueOf(source).Elem().Kind() == reflect.Map {
 			source = reflect.ValueOf(source).Elem().Interface()
-			if m, ok := source.(map[string][]string); ok {
-				for key, values := range m {
-					for _, value := range values {
-						f.parameters.Add(key, value)
-					}
-				}
+			var ok bool
+			if m, ok = source.(map[string][]string); ok {
+				panic("only structs and maps can be passed as sources for query parameters")
 			}
 		} else {
-			panic("only structs can be passed as sources for query parameters")
+			panic("only structs and maps can be passed as sources for query parameters")
 		}
 	default:
-		panic("only structs can be passed as sources for query parameters")
+		panic("only structs and maps can be passed as sources for query parameters")
 	}
 
-	if p.Tag == "" {
-		panic("a valid tag must be provided")
+	for key, values := range m {
+		f.QueryParameter(key, values...)
 	}
-
-	return scan(p.Tag, source)
-
 	return f
 }
 
@@ -409,10 +404,35 @@ func addQueryParameters(requestURL *url.URL, parameters url.Values) (*url.URL, e
 			qp.Add(key, value)
 		}
 	}
-
 	// url.Values formats to a sorted "url encoded" string, e.g. "key=val&foo=bar"
 	requestURL.RawQuery = qp.Encode()
 	return requestURL, nil
+}
+
+func getQueryParametersFromStruct(source interface{}) map[string][]string {
+	result := map[string][]string{}
+	for key, values := range scan("parameter", source) {
+		for _, value := range values {
+			if _, ok := result[key]; !ok {
+				result[key] = []string{}
+			}
+			result[key] = append(result[key], fmt.Sprintf("%v", value))
+		}
+	}
+	return result
+}
+
+func getHeadersFromStruct(source interface{}) map[string][]string {
+	result := map[string][]string{}
+	for key, values := range scan("header", source) {
+		for _, value := range values {
+			if _, ok := result[key]; !ok {
+				result[key] = []string{}
+			}
+			result[key] = append(result[key], fmt.Sprintf("%v", value))
+		}
+	}
+	return result
 }
 
 // scan is the actual workhorse method: it scans the source struct for tagged
