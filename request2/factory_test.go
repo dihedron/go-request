@@ -138,7 +138,7 @@ func TestContentType(t *testing.T) {
 func TestMethod(t *testing.T) {
 	f := New("")
 	tests := []struct {
-		method   func() (*http.Request, error)
+		method   func() *Factory
 		expected string
 	}{
 		{f.Get, "GET"},

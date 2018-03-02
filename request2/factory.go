@@ -324,48 +324,48 @@ func (f *Factory) WithXMLEntity(entity interface{}) io.Reader {
 }
 
 // Get sets the factory method to "GET" and returns an http.Request.
-func (f *Factory) Get() (*http.Request, error) {
-	return f.Method(http.MethodGet).Make()
+func (f *Factory) Get() *Factory {
+	return f.Method(http.MethodGet)
 }
 
 // Post sets the factory method to "POST" and returns an http.Request.
-func (f *Factory) Post() (*http.Request, error) {
-	return f.Method(http.MethodPost).Make()
+func (f *Factory) Post() *Factory {
+	return f.Method(http.MethodPost)
 }
 
 // Put sets the factory method to "PUT" and returns an http.Request.
-func (f *Factory) Put() (*http.Request, error) {
-	return f.Method(http.MethodPut).Make()
+func (f *Factory) Put() *Factory {
+	return f.Method(http.MethodPut)
 }
 
 // Patch sets the factory method to "PATCH" and returns an http.Request.
-func (f *Factory) Patch() (*http.Request, error) {
-	return f.Method(http.MethodPatch).Make()
+func (f *Factory) Patch() *Factory {
+	return f.Method(http.MethodPatch)
 }
 
 // Delete sets the factory method to "DELETE" and returns an http.Request.
-func (f *Factory) Delete() (*http.Request, error) {
-	return f.Method(http.MethodDelete).Make()
+func (f *Factory) Delete() *Factory {
+	return f.Method(http.MethodDelete)
 }
 
 // Head sets the factory method to "HEAD" and returns an http.Request.
-func (f *Factory) Head() (*http.Request, error) {
-	return f.Method(http.MethodHead).Make()
+func (f *Factory) Head() *Factory {
+	return f.Method(http.MethodHead)
 }
 
 // Trace sets the factory method to "TRACE" and returns an http.Request.
-func (f *Factory) Trace() (*http.Request, error) {
-	return f.Method(http.MethodTrace).Make()
+func (f *Factory) Trace() *Factory {
+	return f.Method(http.MethodTrace)
 }
 
 // Options sets the factory method to "OPTIONS" and returns an http.Request.
-func (f *Factory) Options() (*http.Request, error) {
-	return f.Method(http.MethodOptions).Make()
+func (f *Factory) Options() *Factory {
+	return f.Method(http.MethodOptions)
 }
 
 // Connect sets the factory method to "CONNECT" and returns an http.Request.
-func (f *Factory) Connect() (*http.Request, error) {
-	return f.Method(http.MethodConnect).Make()
+func (f *Factory) Connect() *Factory {
+	return f.Method(http.MethodConnect)
 }
 
 // Make creates a new http.Request from the information available in the Factory.
