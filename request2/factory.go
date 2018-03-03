@@ -195,33 +195,7 @@ func (f *Factory) QueryParameter(key string, values ...string) *Factory {
 }
 
 func (f *Factory) QueryParametersFrom(source interface{}) *Factory {
-	var m map[string][]string
-	switch reflect.ValueOf(source).Kind() {
-	case reflect.Struct:
-		m = getQueryParametersFromStruct(source)
-	case reflect.Map:
-		var ok bool
-		if m, ok = source.(map[string][]string); ok {
-			panic("only structs and maps can be passed as sources for query parameters")
-		}
-	case reflect.Ptr:
-		if reflect.ValueOf(source).Elem().Kind() == reflect.Struct {
-			source = reflect.ValueOf(source).Elem().Interface()
-			m = getQueryParametersFromStruct(source)
-		} else if reflect.ValueOf(source).Elem().Kind() == reflect.Map {
-			source = reflect.ValueOf(source).Elem().Interface()
-			var ok bool
-			if m, ok = source.(map[string][]string); ok {
-				panic("only structs and maps can be passed as sources for query parameters")
-			}
-		} else {
-			panic("only structs and maps can be passed as sources for query parameters")
-		}
-	default:
-		panic("only structs and maps can be passed as sources for query parameters")
-	}
-
-	for key, values := range m {
+	for key, values := range getValuesFrom("parameter", source) {
 		f.QueryParameter(key, values...)
 	}
 	return f
@@ -253,6 +227,13 @@ func (f *Factory) Header(key string, values ...string) *Factory {
 	return f
 }
 
+func (f *Factory) HeadersFrom(source interface{}) *Factory {
+	for key, values := range getValuesFrom("header", source) {
+		f.Header(key, values...)
+	}
+	return f
+}
+
 // WithEntity sets the io.Reader from which the request body (payload) will be
 // read; if nil is passed, the request will have no payload; the Content-Type
 // MUST be provoded separately.
@@ -264,7 +245,7 @@ func (f *Factory) WithEntity(entity io.Reader) *Factory {
 // WithJSONEntity sets an io.Reader that returns a JSON fragment as per the
 // input struct; if no Content-Type has been set already, the method will
 // automatically set it to "application/json".
-func (f *Factory) WithJSONEntity(entity interface{}) io.Reader {
+func (f *Factory) WithJSONEntity(entity interface{}) *Factory {
 
 	switch reflect.ValueOf(entity).Kind() {
 	case reflect.Struct:
@@ -289,13 +270,14 @@ func (f *Factory) WithJSONEntity(entity interface{}) io.Reader {
 		f.ContentType("application/json")
 	}
 
-	return bytes.NewReader(data)
+	f.body = bytes.NewReader(data)
+	return f
 }
 
 // WithXMLEntity sets an io.Reader that returns an XML fragment as per the
 // input struct; if no Content-Type has been set already, the method will
 // automatically set it to "application/xml".
-func (f *Factory) WithXMLEntity(entity interface{}) io.Reader {
+func (f *Factory) WithXMLEntity(entity interface{}) *Factory {
 
 	switch reflect.ValueOf(entity).Kind() {
 	case reflect.Struct:
@@ -320,7 +302,8 @@ func (f *Factory) WithXMLEntity(entity interface{}) io.Reader {
 		f.ContentType("text/xml")
 	}
 
-	return bytes.NewReader(data)
+	f.body = bytes.NewReader(data)
+	return f
 }
 
 // Get sets the factory method to "GET" and returns an http.Request.
@@ -393,6 +376,52 @@ func (f *Factory) Make() (*http.Request, error) {
 	return request, nil
 }
 
+func getValuesFrom(tag string, source interface{}) map[string][]string {
+	var m map[string][]string
+	switch reflect.ValueOf(source).Kind() {
+	case reflect.Struct:
+		m = getValuesFromStruct(tag, source)
+	case reflect.Map:
+		var ok bool
+		if m, ok = source.(map[string][]string); ok {
+			panic("only structs and maps can be passed as sources for query parameters")
+		}
+	case reflect.Ptr:
+		if reflect.ValueOf(source).Elem().Kind() == reflect.Struct {
+			source = reflect.ValueOf(source).Elem().Interface()
+			m = getValuesFromStruct(tag, source)
+		} else if reflect.ValueOf(source).Elem().Kind() == reflect.Map {
+			source = reflect.ValueOf(source).Elem().Interface()
+			var ok bool
+			if m, ok = source.(map[string][]string); ok {
+				panic("only structs and maps can be passed as sources")
+			}
+		} else {
+			panic("only structs and maps can be passed as sources")
+		}
+	default:
+		panic("only structs and maps can be passed as sources")
+	}
+	return m
+}
+
+func getValuesFromStruct(tag string, source interface{}) map[string][]string {
+	result := map[string][]string{}
+	for key, values := range scan(tag, source) {
+		for _, value := range values {
+			if _, ok := result[key]; !ok {
+				result[key] = []string{}
+			}
+			if reflect.ValueOf(value).Kind() == reflect.Ptr {
+				result[key] = append(result[key], fmt.Sprintf("%v", reflect.ValueOf(value).Elem().Interface()))
+			} else {
+				result[key] = append(result[key], fmt.Sprintf("%v", value))
+			}
+		}
+	}
+	return result
+}
+
 func addQueryParameters(requestURL *url.URL, parameters url.Values) (*url.URL, error) {
 	qp, err := url.ParseQuery(requestURL.RawQuery)
 	if err != nil {
@@ -409,39 +438,14 @@ func addQueryParameters(requestURL *url.URL, parameters url.Values) (*url.URL, e
 	return requestURL, nil
 }
 
-func getQueryParametersFromStruct(source interface{}) map[string][]string {
-	result := map[string][]string{}
-	for key, values := range scan("parameter", source) {
-		for _, value := range values {
-			if _, ok := result[key]; !ok {
-				result[key] = []string{}
-			}
-			result[key] = append(result[key], fmt.Sprintf("%v", value))
-		}
-	}
-	return result
-}
-
-func getHeadersFromStruct(source interface{}) map[string][]string {
-	result := map[string][]string{}
-	for key, values := range scan("header", source) {
-		for _, value := range values {
-			if _, ok := result[key]; !ok {
-				result[key] = []string{}
-			}
-			result[key] = append(result[key], fmt.Sprintf("%v", value))
-		}
-	}
-	return result
-}
-
 // scan is the actual workhorse method: it scans the source struct for tagged
 // headers and extracts their values; if any embedded or child struct is
 // encountered, it is scanned for values.
 func scan(key string, source interface{}) map[string][]interface{} {
 	result := map[string][]interface{}{}
 	for _, field := range structs.Fields(source) {
-		if field.IsEmbedded() || field.Kind() == reflect.Struct {
+		if field.IsEmbedded() || field.Kind() == reflect.Struct ||
+			(field.Kind() == reflect.Ptr && reflect.ValueOf(field.Value()).Elem().Kind() == reflect.Struct) {
 			for k, v := range scan(key, field.Value()) {
 				if values, ok := result[k]; ok {
 					result[k] = append(values, v...)
