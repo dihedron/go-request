@@ -516,3 +516,25 @@ func TestWithJSONEntity(t *testing.T) {
 		t.Fatalf("error adding entity by reader: content type is %s, expected \"application/my-type\"", f.headers["Content-Type"][0])
 	}
 }
+
+func TestWithJSONEntityNoStruct(t *testing.T) {
+	defer handler("only structs can be passed as source for JSON entities", t)
+	s := "a string"
+	New("").WithJSONEntity(s)
+}
+
+func TestWithJSONEntityNoStructPtr(t *testing.T) {
+	defer handler("only structs can be passed as source for JSON entities", t)
+	s := "a string"
+	New("").WithJSONEntity(&s)
+}
+
+func handler(message string, t *testing.T) {
+	if r := recover(); r != nil {
+		if r == message {
+			t.Logf("correctly recovered: %v", r)
+		} else {
+			t.Fatalf("unxpected panic: %v", r)
+		}
+	}
+}
