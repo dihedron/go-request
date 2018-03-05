@@ -383,8 +383,8 @@ func getValuesFrom(tag string, source interface{}) map[string][]string {
 		m = getValuesFromStruct(tag, source)
 	case reflect.Map:
 		var ok bool
-		if m, ok = source.(map[string][]string); ok {
-			panic("only structs and maps can be passed as sources for query parameters")
+		if m, ok = source.(map[string][]string); !ok {
+			panic("only structs and maps can be passed as sources")
 		}
 	case reflect.Ptr:
 		if reflect.ValueOf(source).Elem().Kind() == reflect.Struct {
@@ -393,7 +393,7 @@ func getValuesFrom(tag string, source interface{}) map[string][]string {
 		} else if reflect.ValueOf(source).Elem().Kind() == reflect.Map {
 			source = reflect.ValueOf(source).Elem().Interface()
 			var ok bool
-			if m, ok = source.(map[string][]string); ok {
+			if m, ok = source.(map[string][]string); !ok {
 				panic("only structs and maps can be passed as sources")
 			}
 		} else {

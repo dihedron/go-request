@@ -283,7 +283,7 @@ func TestQueryParameterFrom(t *testing.T) {
 
 	s := "value2"
 	b := true
-	test := &Struct{
+	testStruct := Struct{
 		Query1:  "value1a",
 		Query2:  &s,
 		Query3a: true,
@@ -299,12 +299,7 @@ func TestQueryParameterFrom(t *testing.T) {
 		},
 	}
 
-	f := New("").Add().QueryParametersFrom(test)
-	if len(f.parameters) != 7 {
-		t.Fatalf("error adding query parameters from struct: expected 7, got %d", len(f.parameters))
-	}
-
-	tests := map[string][]string{
+	testMap := map[string][]string{
 		"query1": []string{"value1a", "value1b"},
 		"query2": []string{"value2"},
 		"query3": []string{"true", "false"},
@@ -313,17 +308,33 @@ func TestQueryParameterFrom(t *testing.T) {
 		"query6": []string{"value6"},
 		"query7": []string{"value7"},
 	}
-	for key, actual := range tests {
-		expected := tests[key]
-		if len(expected) != len(actual) {
-			t.Fatalf("error adding query parameters from struct: different number of expected and actual (%d != %d)", len(expected), len(actual))
+
+	factories := []*Factory{
+		New("").Add().QueryParametersFrom(testStruct),
+		New("").Add().QueryParametersFrom(&testStruct),
+		New("").Add().QueryParametersFrom(testMap),
+		New("").Add().QueryParametersFrom(&testMap),
+	}
+
+	for _, f := range factories {
+		if len(f.parameters) != 7 {
+			t.Fatalf("error adding query parameters from struct: expected 7, got %d", len(f.parameters))
 		}
-		for i := 0; i < len(expected); i++ {
-			if expected[i] != actual[i] {
-				t.Fatalf("error adding query parameters from struct: different values for %s: expected %s, got %s", key, expected[i], actual[i])
+		for key, actual := range testMap {
+			expected := testMap[key]
+			if len(expected) != len(actual) {
+				t.Fatalf("error adding query parameters from struct: different number of expected and actual (%d != %d)", len(expected), len(actual))
+			}
+			for i := 0; i < len(expected); i++ {
+				if expected[i] != actual[i] {
+					t.Fatalf("error adding query parameters from struct: different values for %s: expected %s, got %s", key, expected[i], actual[i])
+				}
 			}
 		}
 	}
+
+	defer handler("only structs and maps can be passed as sources", t)
+	New("").Add().QueryParametersFrom(&s)
 }
 
 func TestAddHeader(t *testing.T) {
@@ -480,10 +491,10 @@ func TestWithEntity(t *testing.T) {
 
 func TestWithJSONEntity(t *testing.T) {
 	type A struct {
-		Field1 string  `json:"field1, omitempty"`
-		Field2 bool    `json:"field2, omitempty"`
-		Field3 int     `json:"field3, omitempty"`
-		Field4 *string `json:"field4, omitempty"`
+		Field1 string  `json:"field1,omitempty"`
+		Field2 bool    `json:"field2,omitempty"`
+		Field3 int     `json:"field3,omitempty"`
+		Field4 *string `json:"field4,omitempty"`
 	}
 
 	s := "value4"
@@ -527,6 +538,57 @@ func TestWithJSONEntityNoStructPtr(t *testing.T) {
 	defer handler("only structs can be passed as source for JSON entities", t)
 	s := "a string"
 	New("").WithJSONEntity(&s)
+}
+
+func TestWithXMLEntity(t *testing.T) {
+	type A struct {
+		Field1 string  `xml:"field1,omitempty"`
+		Field2 bool    `xml:"field2,omitempty"`
+		Field3 int     `xml:"field3,omitempty"`
+		Field4 *string `xml:"field4,omitempty"`
+	}
+
+	s := "value4"
+	a := A{
+		Field1: "value1",
+		Field2: true,
+		Field3: 12,
+		Field4: &s,
+	}
+	expected := "<A><field1>value1</field1><field2>true</field2><field3>12</field3><field4>value4</field4></A>"
+
+	// test with struct "by value"
+	f := New("").WithXMLEntity(a)
+	data, _ := ioutil.ReadAll(f.body)
+	actual := string(data)
+	if actual != expected {
+		t.Fatalf("error adding entity by reader: expected %s, got %s", expected, actual)
+	}
+	if f.headers["Content-Type"][0] != "text/xml" {
+		t.Fatalf("error adding entity by reader: content type is %s, expected \"text/xml\"", f.headers["Content-Type"][0])
+	}
+
+	f = New("").ContentType("application/my-type").WithXMLEntity(&a)
+	data, _ = ioutil.ReadAll(f.body)
+	actual = string(data)
+	if actual != expected {
+		t.Fatalf("error adding entity by reader: expected %s, got %s", expected, actual)
+	}
+	if f.headers["Content-Type"][0] != "application/my-type" {
+		t.Fatalf("error adding entity by reader: content type is %s, expected \"application/my-type\"", f.headers["Content-Type"][0])
+	}
+}
+
+func TestWithXMLEntityNoStruct(t *testing.T) {
+	defer handler("only structs can be passed as source for XML entities", t)
+	s := "a string"
+	New("").WithXMLEntity(s)
+}
+
+func TestWithXMLEntityNoStructPtr(t *testing.T) {
+	defer handler("only structs can be passed as source for XML entities", t)
+	s := "a string"
+	New("").WithXMLEntity(&s)
 }
 
 func handler(message string, t *testing.T) {
