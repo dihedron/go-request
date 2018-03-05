@@ -466,7 +466,7 @@ func TestHeadersFrom(t *testing.T) {
 		"Header6": []string{"value6"},
 		"Header7": []string{"value7"},
 	}
-	for key, actual := range tests {
+	for key, actual := range f.headers {
 		expected := tests[key]
 		if len(expected) != len(actual) {
 			t.Fatalf("error adding headers from struct: different number of expected and actual (%d != %d)", len(expected), len(actual))
@@ -589,6 +589,71 @@ func TestWithXMLEntityNoStructPtr(t *testing.T) {
 	defer handler("only structs can be passed as source for XML entities", t)
 	s := "a string"
 	New("").WithXMLEntity(&s)
+}
+
+func TestMake(t *testing.T) {
+	testMapQP := map[string][]string{
+		"param2": []string{"value2a", "value2b"},
+		"param3": []string{"value3"},
+	}
+
+	testStructQP := &struct {
+		Param4 string `parameter:"param4"`
+		Param5 string `parameter:"param5"`
+		Param6 string `parameter:"param6"`
+	}{
+		Param4: "value4",
+		Param5: "value5",
+		Param6: "value6",
+	}
+
+	testMapH := map[string][]string{
+		"Header1": []string{"value1a", "value1b"},
+		"Header2": []string{"value2"},
+	}
+
+	testStructH := struct {
+		Header3 string `header:"header3"`
+		Header4 string `header:"header4"`
+		Header5 string `header:"header5"`
+	}{
+		Header3: "value3",
+		Header4: "value4",
+		Header5: "value5",
+	}
+
+	f, _ := New("").
+		Base("https://www.example.com/").
+		Path("api/v2/login?param1=value1").
+		Add().
+		QueryParametersFrom(testMapQP).
+		QueryParametersFrom(testStructQP).
+		HeadersFrom(&testMapH).
+		HeadersFrom(&testStructH).
+		Make()
+
+	if f.URL.String() != "https://www.example.com/api/v2/login?param1=value1&param2=value2a&param2=value2b&param3=value3&param4=value4&param5=value5&param6=value6" {
+		t.Fatalf("invalid URL: got %s", f.URL.String())
+	}
+
+	tests := map[string][]string{
+		"Header1": []string{"value1a", "value1b"},
+		"Header2": []string{"value2"},
+		"Header3": []string{"value3"},
+		"Header4": []string{"value4"},
+		"Header5": []string{"value5"},
+	}
+	for key, actual := range f.Header {
+		expected := tests[key]
+		if len(expected) != len(actual) {
+			t.Fatalf("error adding headers from struct: different number of expected and actual (%d != %d)", len(expected), len(actual))
+		}
+		for i := 0; i < len(expected); i++ {
+			if expected[i] != actual[i] {
+				t.Fatalf("error adding headers from struct: different values for %s: expected %s, got %s", key, expected[i], actual[i])
+			}
+		}
+	}
 }
 
 func handler(message string, t *testing.T) {

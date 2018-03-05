@@ -102,7 +102,6 @@ func (f *Factory) Path(path string) *Factory {
 	pathURL, pathErr := url.Parse(path)
 	if baseErr == nil && pathErr == nil {
 		f.url = baseURL.ResolveReference(pathURL).String()
-		return f
 	}
 	return f
 }
@@ -194,6 +193,11 @@ func (f *Factory) QueryParameter(key string, values ...string) *Factory {
 	return f
 }
 
+// QueryParameterFrom adds, sets or removes values extracted from a struct (and
+// tagged with "parameter") or from a map[string][]string to the URL's query
+// parameters; if the query parameters are being removed, there is no need to
+// specify any value in the input struct/map; if the query parameters are being
+// reset, the keys are regarded as regular expressions.
 func (f *Factory) QueryParametersFrom(source interface{}) *Factory {
 	for key, values := range getValuesFrom("parameter", source) {
 		f.QueryParameter(key, values...)
@@ -227,6 +231,11 @@ func (f *Factory) Header(key string, values ...string) *Factory {
 	return f
 }
 
+// HeadersFrom adds, sets or removes values extracted from a struct (and tagged
+// with "header") or from a map[string][]string to the URL's headers; if the
+// headers are being removed, there is no need to  specify any value in the input
+// struct/map; if the headers are being reset, the keys are regarded as regular
+// expressions.
 func (f *Factory) HeadersFrom(source interface{}) *Factory {
 	for key, values := range getValuesFrom("header", source) {
 		f.Header(key, values...)
