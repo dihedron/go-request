@@ -58,7 +58,7 @@ req, _ := request.
 ```
 Note from the example that both ```struct```, ```map[string][]string``` and their pointers are supported.
 
-A ```Builder``` can be used to create sub-```Builder```s that share headers and query parameters with their parent; any changes made to the child are reflected onto the parent:
+A ```Builder``` can be used to create sub-```Builder```s that has a copy of the parent's headers and query parameters at that moment, plus a shared reference to the entity ```ioReader```:
 ``` golang {.line-numbers}
 parent, _ := request.
 	New("").

@@ -75,8 +75,8 @@ func (f *Builder) New(method, url string) *Builder {
 	clone := &Builder{
 		method:     f.method,
 		url:        f.url,
-		headers:    f.headers,
-		parameters: f.parameters,
+		headers:    map[string][]string{},
+		parameters: map[string][]string{},
 		body:       f.body,
 	}
 	if method != "" {
@@ -84,6 +84,18 @@ func (f *Builder) New(method, url string) *Builder {
 	}
 	if url != "" {
 		clone.url = url
+	}
+	for key, values := range f.headers {
+		if _, ok := clone.headers[key]; !ok {
+			clone.headers[key] = []string{}
+		}
+		clone.headers[key] = append(clone.headers[key], values...)
+	}
+	for key, values := range f.parameters {
+		if _, ok := clone.parameters[key]; !ok {
+			clone.parameters[key] = []string{}
+		}
+		clone.parameters[key] = append(clone.parameters[key], values...)
 	}
 	return clone
 }
