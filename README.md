@@ -56,13 +56,13 @@ req, _ := request.
 ```
 Note from the example that both ```struct```, ```map[string][]string``` and their pointers are supported.
 
-A ```Builder``` can be used to create sub-```Builder```s that inherit any settings defined on their parent, and share headers and query parameters so that any changes made to the child are reflected onto the parent:
+A ```Builder``` can be used to create sub-```Builder```s that share headers and query parameters with their parent; any changes made to the child are reflected onto the parent:
 ``` golang {.line-numbers}
-factory1, _ := request.
+parent, _ := request.
 	New("").
 	Base("https://www.example.com/")
 	// more methods here...
-factory2 := factory1.New() // shares headers and query parameters.
+child := parent.New() // shares headers and query parameters.
 ```	
 
 
