@@ -1,5 +1,8 @@
 # go-request
-This project implements a simple HTTP requests builder with a fluent API. The library can be imported via
+This project implements a simple HTTP requests builder with a fluent API. 
+
+## Usage
+The library can be imported via
 ``` golang {.line-numbers}
 import (
 	"github.com/dihedron/go-request"
@@ -8,7 +11,8 @@ import (
 and provides a simple factory pattern that can be used to add information and finally retrieve an ```http.Request``` object. The ```Builder``` is available under the ```request``` namespace.
 Typical usage would be along the following lines:
 ``` golang {.line-numbers}
-req, _ := request.New("").                              // create the factory
+req, _ := request.
+	New("").                                        // create the factory
 	UserAgent("myUserAgent/1.0").                   // sets the user agent
 	Base("https://www.example.com/").               // base URL for requests
 	Path("api/v2/login?param1=value1").             // extra request path
@@ -19,8 +23,27 @@ req, _ := request.New("").                              // create the factory
 	WithJSONEntity(myTaggedStruct).                 // adds the request body from a struct
 	Make()
 ```
-The first instruction (```New("")```) creates a new factory.
+Let's break it apart, line by line: 
+1. the first instruction (```New("")```) creates a new builder; this method can be used to pass in the request's URL, or it can be specified later, as in this example;
+2. the second instruction (```UserAgent()```) adds the ```User-Agent``` header to the request; a special facility is provided for the ```User-Agent``` and ```Content-Type``` headers since these are more common used than others;
+3. the ```Base()``` call sets the base URL for requests generated from this builder; this can be very useful when creating sub-builders, because they will all share the same base URL and have different paths;
+4. ```Path()``` sets the resource path; paths can be absolute (in which case the base path should have a trailing slash) or relative and include "../"; if the path includes query parameters, they will be preserved when the request is generated;
+5. ```Add()``` opens a section where the builder accepts query parameter and header values that will be __added__ to the request; other accepted operations are ```Set()``` (which __replaces__ query parameters and headers if already present), ```'Del()``` (which __removes__ headers and query parameter with the given key), ```Remove()``` (which __removes__ headers and query parameters whose keys match the given regular expression);
+6. ```QueryParameter()``` and ```Header()``` are used to specify query parameters and headers, respectively, that will be added to the builder;
+7. ```WithJSONEntity()``` (and its XML counterpart ```WithXMLEntity()```) is a way to add the request entity (payload) by passing in a tagged struct; all fields marked with ```json``` (and ```xml```) will be stored as part of the JSON (XML) request body; these methods also have the side effect of setting the ```USer-Agent``` if none was set already;
+8. ```Make()``` creates the ```http.Request```.
+ 
+The library provides the following additional facilities:
+- reading of raw data into the request body (see ```WithEntity(io.Reader)```), as follows:
 ``` golang {.line-numbers}
+// TODO
+```
+- populating headers ad query parameters from a struct, whose fields are tagged with ```header``` and ```parameter``` tags respectively, or from a ```map[string][]string``` (see ```HeaderFrom()``` and ```QueryParametersFrom()```).
+``` golang {.line-numbers}
+req, _ := request.
+	New("").
+	// more methods here...
+	Set().
 	QueryParametersFrom(testMapQP).
 	QueryParametersFrom(testStructQP).
 	HeadersFrom(&testMapH).
