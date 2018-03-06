@@ -25,7 +25,7 @@ func getClient() *http.Client {
 	}
 }
 
-func TestNewFactory(t *testing.T) {
+func TestNewBuilder(t *testing.T) {
 	f := New("https://www.example.com")
 	if f.method != http.MethodGet {
 		t.Fatalf("invalid method: expected get, got %v", f.method)
@@ -46,7 +46,7 @@ func TestNewFactory(t *testing.T) {
 	}
 }
 
-func TestNewSubFactory(t *testing.T) {
+func TestNewSubBuilder(t *testing.T) {
 	f := New("https://www.example.com").New("", "")
 	if f.method != http.MethodGet {
 		t.Fatalf("invalid method: expected GET, got %v", f.method)
@@ -140,7 +140,7 @@ func TestContentType(t *testing.T) {
 func TestMethod(t *testing.T) {
 	f := New("")
 	tests := []struct {
-		method   func() *Factory
+		method   func() *Builder
 		expected string
 	}{
 		{f.Get, "GET"},
@@ -165,7 +165,7 @@ func TestMethod(t *testing.T) {
 func TestOp(t *testing.T) {
 	f := New("")
 	tests := []struct {
-		method   func() *Factory
+		method   func() *Builder
 		expected operation
 	}{
 		{f.Add, add},
@@ -309,7 +309,7 @@ func TestQueryParameterFrom(t *testing.T) {
 		"query7": []string{"value7"},
 	}
 
-	factories := []*Factory{
+	factories := []*Builder{
 		New("").Add().QueryParametersFrom(testStruct),
 		New("").Add().QueryParametersFrom(&testStruct),
 		New("").Add().QueryParametersFrom(testMap),
