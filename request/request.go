@@ -83,7 +83,7 @@ func (f *Builder) New(method, url string) *Builder {
 		clone.method = strings.ToUpper(method)
 	}
 	if url != "" {
-		clone.url = url
+		clone.Path(url)
 	}
 	for key, values := range f.headers {
 		if _, ok := clone.headers[key]; !ok {
