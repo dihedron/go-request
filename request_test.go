@@ -656,6 +656,58 @@ func TestMake(t *testing.T) {
 	}
 }
 
+func TestString(t *testing.T) {
+	testMapQP := map[string][]string{
+		"param2": []string{"value2a", "value2b"},
+		"param3": []string{"value3"},
+	}
+
+	testStructQP := &struct {
+		Param4 string `parameter:"param4"`
+		Param5 string `parameter:"param5"`
+		Param6 string `parameter:"param6"`
+	}{
+		Param4: "value4",
+		Param5: "value5",
+		Param6: "value6",
+	}
+
+	testMapH := map[string][]string{
+		"Header1": []string{"value1a", "value1b"},
+		"Header2": []string{"value2"},
+	}
+
+	testStructH := struct {
+		Header3 string `header:"header3"`
+		Header4 string `header:"header4"`
+		Header5 string `header:"header5"`
+	}{
+		Header3: "value3",
+		Header4: "value4",
+		Header5: "value5",
+	}
+
+	entity := struct {
+		Name    string `json:"name,omitempty"`
+		Surname string `json:"surname,omitempty"`
+	}{
+		Name:    "John",
+		Surname: "Doe",
+	}
+
+	f := New("").
+		Base("https://www.example.com/").
+		Path("api/v2/login?param1=value1").
+		Add().
+		QueryParametersFrom(testMapQP).
+		QueryParametersFrom(testStructQP).
+		HeadersFrom(&testMapH).
+		HeadersFrom(&testStructH).
+		WithJSONEntity(entity)
+
+	t.Logf("string:\n%v", f)
+}
+
 func handler(message string, t *testing.T) {
 	if r := recover(); r != nil {
 		if r == message {
