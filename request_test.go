@@ -708,6 +708,54 @@ func TestString(t *testing.T) {
 	t.Logf("string:\n%v", f)
 }
 
+func TestGetValuesFromStruct(t *testing.T) {
+	value2 := "value2"
+	testStruct := &struct {
+		Value            string  `parameter:"param1"`
+		Pointer          *string `parameter:"param2"`
+		ValueOmitEmpty   string  `parameter:"param3,omitempty"`
+		PointerOmitEmpty *bool   `parameter:"param4,omitempty"`
+		Dash             bool    `parameter:"-"`
+	}{
+		Value:            "value1",
+		Pointer:          &value2,
+		ValueOmitEmpty:   "",
+		PointerOmitEmpty: nil,
+		Dash:             true,
+	}
+
+	results := getValuesFromStruct("parameter", testStruct)
+
+	for key, values := range results {
+		t.Logf("%s => [", key)
+		for _, value := range values {
+			t.Logf("   %v", value)
+		}
+		t.Logf("]")
+	}
+
+	if len(results) != 2 {
+		t.Fatalf("invalid number of elements: expected 2, got %d", len(results))
+	}
+
+	//var values []string
+	if values, ok := results["param1"]; !ok {
+		t.Fatalf("no value for \"param1\": expected \"value1\", got nothing")
+	} else if len(values) != 1 {
+		t.Fatalf("more than one value for \"param1\": expected 1, got %d", len(values))
+	} else if values[0] != "value1" {
+		t.Fatalf("invalid value for \"param1\": expected \"value1\", got %q", values[0])
+	}
+	if values, ok := results["param2"]; !ok {
+		t.Fatalf("no value for \"param2\": expected \"value2\", got nothing")
+	} else if len(values) != 1 {
+		t.Fatalf("more than one value for \"param2\": expected 1, got %d", len(values))
+	} else if values[0] != "value2" {
+		t.Fatalf("invalid value for \"param2\": expected \"value2\", got %q", values[0])
+	}
+
+}
+
 func handler(message string, t *testing.T) {
 	if r := recover(); r != nil {
 		if r == message {
