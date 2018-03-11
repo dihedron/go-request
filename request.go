@@ -520,18 +520,49 @@ func addQueryParameters(requestURL *url.URL, parameters url.Values) (*url.URL, e
 }
 
 // scan is the actual workhorse method: it scans the source struct for tagged
-// headers and extracts their values; if any embedded or child struct is
-// encountered, it is scanned for values.
+// fields and extracts their values; its behaviour is the following:
+// - untagged embedded structs, child structs and pointers to structs are scanned
+//   recursively
+// - tagges embedde structs, child structs and pointers to structs are converted
+//   to string, provided they implement the Stringer interface, otherwise they
+//   are ignored.
+// - all other tagged values are extracted.
 func scan(key string, source interface{}) map[string][]interface{} {
 	result := map[string][]interface{}{}
 	for _, field := range structs.Fields(source) {
 		if field.IsEmbedded() || field.Kind() == reflect.Struct ||
 			(field.Kind() == reflect.Ptr && reflect.ValueOf(field.Value()).Elem().Kind() == reflect.Struct) {
-			for k, v := range scan(key, field.Value()) {
-				if values, ok := result[k]; ok {
-					result[k] = append(values, v...)
+			tag := NewTag(field.Tag(key))
+			if tag.Name() == "" {
+				for k, v := range scan(key, field.Value()) {
+					if values, ok := result[k]; ok {
+						result[k] = append(values, v...)
+					} else {
+						result[k] = v
+					}
+				}
+			} else if !tag.IsIgnore() {
+				var value reflect.Value
+				if field.Kind() == reflect.Ptr {
+					if reflect.ValueOf(field.Value()).IsNil() && tag.IsOmitEmpty() {
+						// do nothing
+					} else {
+						value = reflect.ValueOf(field.Value()).Elem()
+					}
 				} else {
-					result[k] = v
+					value = reflect.ValueOf(field.Value())
+				}
+				switch value := value.Interface().(type) {
+				case fmt.Stringer:
+					k := tag.Name()
+					v := fmt.Sprintf("%v", value)
+					if values, ok := result[k]; ok {
+						result[k] = append(values, v)
+					} else {
+						result[k] = []interface{}{v}
+					}
+				default:
+					//					printField(reflect.Indirect(reflect.ValueOf(a)).Interface())
 				}
 			}
 		} else {

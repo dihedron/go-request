@@ -5,6 +5,7 @@
 package request
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -259,7 +260,66 @@ func TestRemQueryParameter(t *testing.T) {
 	}
 }
 
-func TestQueryParameterFrom(t *testing.T) {
+// ISO8601 is a format for timestamps used in the tests.
+const ISO8601 string = "2006-01-02T15:04:05.000000Z"
+
+// Operator represents a comparison operator for ordered values.
+type Operator int8
+
+// String returns the operator as a string prepresentation; this is used in
+// HTTP query parameters that represent time filters.
+func (op Operator) String() string {
+	switch op {
+	case EQ:
+		return "eq"
+	case LT:
+		return "lt"
+	case LTE:
+		return "lte"
+	case GT:
+		return "gt"
+	case GTE:
+		return "gte"
+	case NE:
+		return "ne"
+	}
+	return ""
+}
+
+const (
+	// EQ is the constant used to indicate that some entity is "equal to" some
+	// other reference or provided value.
+	EQ Operator = iota
+	// LT is the constant used to indicate that some entity is "less than" some
+	// other reference or provided value.
+	LT
+	// LTE is the constant used to indicate that some entity is "less than or
+	// equal to" some other reference or provided value.
+	LTE
+	// GTE is the constant used to indicate that some entity is "greater than or
+	// equal to" some other reference or provided value.
+	GTE
+	// GT is the constant used to indicate that some entity is "greater than"
+	// some other reference or provided value.
+	GT
+	// NE is the constant used to indicate that some entity is "not equal to"
+	// some other reference or provided value.
+	NE
+)
+
+// TimeFilter is used to provide time-based filters in API calls, e.g. retrieving
+// only those users whose passwords expire after (GT) a certain date.
+type TimeFilter struct {
+	Timestamp time.Time
+	Operator  Operator
+}
+
+// String returns a TimeFilter as an acceptable query parameter.
+func (tf TimeFilter) String() string {
+	return fmt.Sprintf("%v:%v", tf.Operator, tf.Timestamp.Format(ISO8601))
+}
+
+func TestQueryParametersFrom(t *testing.T) {
 
 	type Nested struct {
 		Query7 string `parameter:"query7"`
@@ -279,10 +339,12 @@ func TestQueryParameterFrom(t *testing.T) {
 		Query4  *bool   `parameter:"query4"`
 		Embedded
 		Nested *Nested
+		Query8 *TimeFilter `parameter:"query8,omitempty"`
 	}
 
 	s := "value2"
 	b := true
+	ts, _ := time.Parse("2018-03-11T22:11:16.000000Z", ISO8601)
 	testStruct := Struct{
 		Query1:  "value1a",
 		Query2:  &s,
@@ -297,6 +359,10 @@ func TestQueryParameterFrom(t *testing.T) {
 			Query7: "value7",
 			Query1: "value1b",
 		},
+		Query8: &TimeFilter{
+			Operator:  EQ,
+			Timestamp: ts,
+		},
 	}
 
 	testMap := map[string][]string{
@@ -307,6 +373,7 @@ func TestQueryParameterFrom(t *testing.T) {
 		"query5": []string{"value5"},
 		"query6": []string{"value6"},
 		"query7": []string{"value7"},
+		"query8": []string{"eq:2018-03-11T22:11:16.000000Z"},
 	}
 
 	factories := []*Builder{
@@ -317,8 +384,8 @@ func TestQueryParameterFrom(t *testing.T) {
 	}
 
 	for _, f := range factories {
-		if len(f.parameters) != 7 {
-			t.Fatalf("error adding query parameters from struct: expected 7, got %d", len(f.parameters))
+		if len(f.parameters) != 8 {
+			t.Fatalf("error adding query parameters from struct: expected 8, got %d", len(f.parameters))
 		}
 		for key, actual := range testMap {
 			expected := testMap[key]
