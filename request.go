@@ -562,10 +562,15 @@ func scan(key string, source interface{}) map[string][]interface{} {
 						result[k] = []interface{}{v}
 					}
 				default:
-					//					printField(reflect.Indirect(reflect.ValueOf(a)).Interface())
+					// do nothing
 				}
 			}
 		} else {
+			// TODO: handle correctly the "omitepty" and "-" cases (see above)
+			// note: since we're adding interface{}s, maybe the case of tagged
+			// structs above (and struct pointers) could be handled here by
+			// calling Value().Interface() or Value().Elem().Interface() and
+			// assume they both implement Stringer.
 			tag := field.Tag(key)
 			if tag != "" {
 				value := field.Value()
