@@ -465,7 +465,7 @@ func getValuesFrom(tag string, source interface{}) map[string][]string {
 func getValuesFromStruct(tag string, source interface{}) map[string][]string {
 	result := map[string][]string{}
 	for key, values := range scan(tag, source) {
-		log.Infof("tag is %q", key)
+		// log.Debugf("tag is %q", key)
 		for _, value := range values {
 			s := ""
 			if reflect.ValueOf(value).Kind() == reflect.Ptr && !reflect.ValueOf(value).IsNil() {
@@ -561,6 +561,9 @@ func scan(key string, source interface{}) map[string][]interface{} {
 				// ignore zero values for omitempty fields
 				log.Debugf("... field is zero value and has \"omitempty\" (type: %T), skipping...", field.Value())
 				continue
+			} else if isZeroReferenceType(field.Value()) {
+				log.Debugf("... field is pointer to zero value and has \"omitempty\" (type: %T), skipping...", field.Value())
+				continue
 			} else {
 				log.Debugf("... field is a final value, adding as is under %q...", k)
 				value = field.Value()
@@ -582,6 +585,15 @@ func isNilReferenceType(value interface{}) bool {
 	switch reflect.ValueOf(value).Kind() {
 	case reflect.Chan, reflect.Func, reflect.Map, reflect.Ptr, reflect.Interface, reflect.Slice:
 		return reflect.ValueOf(value).IsNil()
+	}
+	return false
+}
+
+func isZeroReferenceType(value interface{}) bool {
+	if reflect.ValueOf(value).Kind() == reflect.Ptr {
+		current := reflect.ValueOf(value).Elem().Interface()
+		zero := reflect.Zero(reflect.ValueOf(current).Type()).Interface()
+		return reflect.DeepEqual(current, zero)
 	}
 	return false
 }

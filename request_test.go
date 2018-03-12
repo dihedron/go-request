@@ -778,18 +778,21 @@ func TestString(t *testing.T) {
 
 func TestGetValuesFromStruct(t *testing.T) {
 	value2 := "value2"
+	value5 := ""
 	testStruct := &struct {
-		Value            string  `parameter:"param1"`
-		Pointer          *string `parameter:"param2"`
-		ValueOmitEmpty   string  `parameter:"param3,omitempty"`
-		PointerOmitEmpty *bool   `parameter:"param4,omitempty"`
-		Dash             bool    `parameter:"-"`
+		Value                         string  `parameter:"param1"`
+		Pointer                       *string `parameter:"param2"`
+		ValueOmitEmpty                string  `parameter:"param3,omitempty"`
+		PointerOmitEmpty              *bool   `parameter:"param4,omitempty"`
+		PointerToEmptyStringOmitEmpty *string `parameter:"param5,omitempty"`
+		Dash                          bool    `parameter:"-"`
 	}{
-		Value:            "value1",
-		Pointer:          &value2,
-		ValueOmitEmpty:   "",
-		PointerOmitEmpty: nil,
-		Dash:             true,
+		Value:                         "value1",
+		Pointer:                       &value2,
+		ValueOmitEmpty:                "",
+		PointerOmitEmpty:              nil,
+		PointerToEmptyStringOmitEmpty: &value5,
+		Dash: true,
 	}
 
 	results := getValuesFromStruct("parameter", testStruct)
@@ -821,7 +824,6 @@ func TestGetValuesFromStruct(t *testing.T) {
 	} else if values[0] != "value2" {
 		t.Fatalf("invalid value for \"param2\": expected \"value2\", got %q", values[0])
 	}
-
 }
 
 func handler(message string, t *testing.T) {
