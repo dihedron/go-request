@@ -509,7 +509,7 @@ func addQueryParameters(requestURL *url.URL, parameters url.Values) (*url.URL, e
 func scan(key string, source interface{}) map[string][]interface{} {
 	result := map[string][]interface{}{}
 	for _, field := range structs.Fields(source) {
-		log.Debugf("analysing field %q...", field.Name())
+		log.Debugf("analysing field %q for tag `%s`...", field.Name(), key)
 		tag := NewTag(field.Tag(key))
 		if tag.IsMissing() {
 			// untagged field
