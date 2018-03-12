@@ -16,6 +16,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/dihedron/go-log"
 	"github.com/fatih/structs"
 )
 
@@ -464,7 +465,8 @@ func getValuesFrom(tag string, source interface{}) map[string][]string {
 func getValuesFromStruct(tag string, source interface{}) map[string][]string {
 	result := map[string][]string{}
 outer:
-	for tagValue, values := range scan(tag, source) {
+	for tagValue, values := range scan2(tag, source) {
+		log.Infof("tag is %q", tagValue)
 		omitempty := false
 		key := ""
 		for _, k := range strings.Split(tagValue, ",") {
@@ -523,18 +525,18 @@ func addQueryParameters(requestURL *url.URL, parameters url.Values) (*url.URL, e
 // fields and extracts their values; its behaviour is the following:
 // - untagged embedded structs, child structs and pointers to structs are scanned
 //   recursively
-// - tagges embedde structs, child structs and pointers to structs are converted
+// - tagged embedded structs, child structs and pointers to structs are converted
 //   to string, provided they implement the Stringer interface, otherwise they
 //   are ignored.
 // - all other tagged values are extracted.
-func scan(key string, source interface{}) map[string][]interface{} {
+func scan1(key string, source interface{}) map[string][]interface{} {
 	result := map[string][]interface{}{}
 	for _, field := range structs.Fields(source) {
 		if field.IsEmbedded() || field.Kind() == reflect.Struct ||
 			(field.Kind() == reflect.Ptr && reflect.ValueOf(field.Value()).Elem().Kind() == reflect.Struct) {
 			tag := NewTag(field.Tag(key))
 			if tag.Name() == "" {
-				for k, v := range scan(key, field.Value()) {
+				for k, v := range scan1(key, field.Value()) {
 					if values, ok := result[k]; ok {
 						result[k] = append(values, v...)
 					} else {
@@ -583,4 +585,92 @@ func scan(key string, source interface{}) map[string][]interface{} {
 		}
 	}
 	return result
+}
+
+// scan is the actual workhorse method: it scans the source struct for tagged
+// fields and extracts their values; its behaviour is the following:
+// - untagged embedded structs, child structs and pointers to structs are scanned
+//   recursively
+// - tagged embedded structs, child structs and pointers to structs are converted
+//   to string, provided they implement the Stringer interface, otherwise they
+//   are ignored.
+// - all other tagged values are extracted.
+func scan2(key string, source interface{}) map[string][]interface{} {
+	result := map[string][]interface{}{}
+	for _, field := range structs.Fields(source) {
+		log.Debugf("analysing field %q...", field.Name())
+		tag := NewTag(field.Tag(key))
+		if tag.IsMissing() {
+			// untagged field
+			log.Debugf("... tag is missing")
+			if field.Kind() == reflect.Struct {
+				// recurse
+				log.Debugf("... field is a struct, recursing...")
+				for k, v := range scan2(key, field.Value()) {
+					if values, ok := result[k]; ok {
+						result[k] = append(values, v...)
+					} else {
+						result[k] = v
+					}
+				}
+			} else if field.Kind() == reflect.Ptr && reflect.ValueOf(field.Value()).Elem().Kind() == reflect.Struct {
+				log.Debugf("... field is a struct pointer, recursing...")
+				for k, v := range scan2(key, reflect.ValueOf(field.Value()).Elem().Interface()) {
+					if values, ok := result[k]; ok {
+						result[k] = append(values, v...)
+					} else {
+						result[k] = v
+					}
+				}
+			} else {
+				// ignore
+				log.Debugf("... untagged field or type %T, skipping...", field.Value())
+				continue
+			}
+		} else if tag.IsIgnore() {
+			// ignore
+			log.Debugf("... field is tagged with \"-\" (type: %T), skipping...", field.Value())
+			continue
+		} else {
+			// tagged field
+			k := tag.Name()
+			log.Debugf("... field is tagged with %q (type: %T)", k, field.Value())
+			var value interface{}
+			if field.Kind() == reflect.Struct {
+				log.Debugf("... field is a struct, adding as is under %q...", k)
+				value = field.Value()
+			} else if field.Kind() == reflect.Ptr && reflect.ValueOf(field.Value()).Elem().Kind() == reflect.Struct {
+				log.Debugf("... field is a struct pointer, adding after dereferencing under %q...", k)
+				value = reflect.ValueOf(field.Value()).Elem().Interface()
+			} else if isNilReferenceType(field.Value()) && tag.IsOmitEmpty() {
+				// ignore nil omitempty fields
+				log.Debugf("... field is nil reference and has \"omitempty\" (type: %T), skipping...", field.Value())
+				continue
+			} else if field.IsZero() && tag.IsOmitEmpty() {
+				// ignore zero values for omitempty fields
+				log.Debugf("... field is zero value and has \"omitempty\" (type: %T), skipping...", field.Value())
+				continue
+			} else {
+				log.Debugf("... field is a final value, adding as is under %q...", k)
+				value = field.Value()
+			}
+			if values, ok := result[k]; ok {
+				result[k] = append(values, value)
+			} else {
+				result[k] = []interface{}{value}
+			}
+		}
+	}
+	return result
+}
+
+func isNilReferenceType(value interface{}) bool {
+	if value == nil {
+		return true
+	}
+	switch reflect.ValueOf(value).Kind() {
+	case reflect.Chan, reflect.Func, reflect.Map, reflect.Ptr, reflect.Interface, reflect.Slice:
+		return reflect.ValueOf(value).IsNil()
+	}
+	return false
 }

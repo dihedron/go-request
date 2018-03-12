@@ -28,6 +28,11 @@ func (t Tag) Name() string {
 	return ""
 }
 
+// IsMissing returns whether the tag on the field is missing/invalid (i.e. empty).
+func (t Tag) IsMissing() bool {
+	return strings.TrimSpace(t.tag) == ""
+}
+
 // IsIgnore returns whether the tagged field struct contains the "-" (dash)
 // character that is usually employed to say that the field should be ignored
 // with respect to this specific tag handling (e.g. `json:"-"` means "do not

@@ -71,6 +71,9 @@ func TestTag(t *testing.T) {
 			if tag.Name() != "" {
 				t.Fatalf("field E must be not valid (\"\")")
 			}
+			if !tag.IsMissing() {
+				t.Fatalf("field E must have a missing tag")
+			}
 		}
 	}
 }
