@@ -389,6 +389,7 @@ func TestQueryParametersFrom(t *testing.T) {
 		}
 		for key, actual := range testMap {
 			expected := testMap[key]
+			t.Logf("comparing %q against %q...", actual, expected)
 			if len(expected) != len(actual) {
 				t.Fatalf("error adding query parameters from struct: different number of expected and actual (%d != %d)", len(expected), len(actual))
 			}

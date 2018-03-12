@@ -464,42 +464,19 @@ func getValuesFrom(tag string, source interface{}) map[string][]string {
 
 func getValuesFromStruct(tag string, source interface{}) map[string][]string {
 	result := map[string][]string{}
-outer:
-	for tagValue, values := range scan2(tag, source) {
-		log.Infof("tag is %q", tagValue)
-		omitempty := false
-		key := ""
-		for _, k := range strings.Split(tagValue, ",") {
-			switch strings.TrimSpace(k) {
-			case "omitempty":
-				omitempty = true
-			case "-":
-				continue outer
-			default:
-				key = k
-			}
-		}
-
+	for key, values := range scan(tag, source) {
+		log.Infof("tag is %q", key)
 		for _, value := range values {
-			if reflect.ValueOf(value).Kind() == reflect.Ptr {
-				if !reflect.ValueOf(value).IsNil() {
-					s := fmt.Sprintf("%v", reflect.ValueOf(value).Elem().Interface())
-					if !omitempty || len(s) > 0 {
-						if _, ok := result[key]; !ok {
-							result[key] = []string{}
-						}
-						result[key] = append(result[key], s)
-					}
-				}
+			s := ""
+			if reflect.ValueOf(value).Kind() == reflect.Ptr && !reflect.ValueOf(value).IsNil() {
+				s = fmt.Sprintf("%v", reflect.ValueOf(value).Elem().Interface())
 			} else {
-				s := fmt.Sprintf("%v", value)
-				if !omitempty || len(s) > 0 {
-					if _, ok := result[key]; !ok {
-						result[key] = []string{}
-					}
-					result[key] = append(result[key], s)
-				}
+				s = fmt.Sprintf("%v", value)
 			}
+			if _, ok := result[key]; !ok {
+				result[key] = []string{}
+			}
+			result[key] = append(result[key], s)
 		}
 	}
 	return result
@@ -529,73 +506,7 @@ func addQueryParameters(requestURL *url.URL, parameters url.Values) (*url.URL, e
 //   to string, provided they implement the Stringer interface, otherwise they
 //   are ignored.
 // - all other tagged values are extracted.
-func scan1(key string, source interface{}) map[string][]interface{} {
-	result := map[string][]interface{}{}
-	for _, field := range structs.Fields(source) {
-		if field.IsEmbedded() || field.Kind() == reflect.Struct ||
-			(field.Kind() == reflect.Ptr && reflect.ValueOf(field.Value()).Elem().Kind() == reflect.Struct) {
-			tag := NewTag(field.Tag(key))
-			if tag.Name() == "" {
-				for k, v := range scan1(key, field.Value()) {
-					if values, ok := result[k]; ok {
-						result[k] = append(values, v...)
-					} else {
-						result[k] = v
-					}
-				}
-			} else if !tag.IsIgnore() {
-				var value reflect.Value
-				if field.Kind() == reflect.Ptr {
-					if reflect.ValueOf(field.Value()).IsNil() && tag.IsOmitEmpty() {
-						// do nothing
-					} else {
-						value = reflect.ValueOf(field.Value()).Elem()
-					}
-				} else {
-					value = reflect.ValueOf(field.Value())
-				}
-				switch value := value.Interface().(type) {
-				case fmt.Stringer:
-					k := tag.Name()
-					v := fmt.Sprintf("%v", value)
-					if values, ok := result[k]; ok {
-						result[k] = append(values, v)
-					} else {
-						result[k] = []interface{}{v}
-					}
-				default:
-					// do nothing
-				}
-			}
-		} else {
-			// TODO: handle correctly the "omitepty" and "-" cases (see above)
-			// note: since we're adding interface{}s, maybe the case of tagged
-			// structs above (and struct pointers) could be handled here by
-			// calling Value().Interface() or Value().Elem().Interface() and
-			// assume they both implement Stringer.
-			tag := field.Tag(key)
-			if tag != "" {
-				value := field.Value()
-				if values, ok := result[tag]; ok {
-					result[tag] = append(values, value)
-				} else {
-					result[tag] = []interface{}{value}
-				}
-			}
-		}
-	}
-	return result
-}
-
-// scan is the actual workhorse method: it scans the source struct for tagged
-// fields and extracts their values; its behaviour is the following:
-// - untagged embedded structs, child structs and pointers to structs are scanned
-//   recursively
-// - tagged embedded structs, child structs and pointers to structs are converted
-//   to string, provided they implement the Stringer interface, otherwise they
-//   are ignored.
-// - all other tagged values are extracted.
-func scan2(key string, source interface{}) map[string][]interface{} {
+func scan(key string, source interface{}) map[string][]interface{} {
 	result := map[string][]interface{}{}
 	for _, field := range structs.Fields(source) {
 		log.Debugf("analysing field %q...", field.Name())
@@ -606,7 +517,7 @@ func scan2(key string, source interface{}) map[string][]interface{} {
 			if field.Kind() == reflect.Struct {
 				// recurse
 				log.Debugf("... field is a struct, recursing...")
-				for k, v := range scan2(key, field.Value()) {
+				for k, v := range scan(key, field.Value()) {
 					if values, ok := result[k]; ok {
 						result[k] = append(values, v...)
 					} else {
@@ -615,7 +526,7 @@ func scan2(key string, source interface{}) map[string][]interface{} {
 				}
 			} else if field.Kind() == reflect.Ptr && reflect.ValueOf(field.Value()).Elem().Kind() == reflect.Struct {
 				log.Debugf("... field is a struct pointer, recursing...")
-				for k, v := range scan2(key, reflect.ValueOf(field.Value()).Elem().Interface()) {
+				for k, v := range scan(key, reflect.ValueOf(field.Value()).Elem().Interface()) {
 					if values, ok := result[k]; ok {
 						result[k] = append(values, v...)
 					} else {
