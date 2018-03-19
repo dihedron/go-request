@@ -578,7 +578,8 @@ func bindVariables(u *url.URL, variables map[string]string) string {
 		log.Debugf("... buffer now: %q", buffer.String())
 		pivot = match[1]
 	}
-	s = url.PathEscape(buffer.String())
+	//s = url.PathEscape(buffer.String())
+	s = buffer.String()
 	log.Debugf("URL bound to variables, returning %q", s)
 	return s
 }
