@@ -850,18 +850,31 @@ func TestBindVariables(t *testing.T) {
 		"var2": "value2",
 		"var3": "value3",
 	}
-	u, err := url.Parse("https://example.com/foo/{var1}/{var2}/{var1}/{var3}/var1/var2/{var4}/{var1}-{var3}/bar?{var4}&foo=baz")
-	if err != nil {
-		t.Fatalf("error parsing URL: %v", err)
-	}
-	s := bindVariables(u, variables)
-	actual, _ := url.PathUnescape(s)
-	expected := "https://example.com/foo/value1/value2/value1/value3/var1/var2/{var4}/value1-value3/bar?{var4}&foo=baz"
-	if actual != expected {
-		t.Fatalf("error, expected %q got %q", expected, actual)
-	}
 
-	//t.Logf("URL: %q", s)
+	tests := []struct {
+		template string
+		expected string
+	}{
+		{
+			template: "https://example.com/foo/{var1}/{var2}/{var1}/{var3}/var1/var2/{var4}/{var1}-{var3}/bar?{var4}&foo=baz",
+			expected: "https://example.com/foo/value1/value2/value1/value3/var1/var2/{var4}/value1-value3/bar?{var4}&foo=baz",
+		},
+		{
+			template: "https://example.com/foo/{var1}/{var2}/{var1}/{var3}/var1/var2/{var4}/{var1}-{var3}/bar?{var4}",
+			expected: "https://example.com/foo/value1/value2/value1/value3/var1/var2/{var4}/value1-value3/bar?{var4}",
+		},
+	}
+	for _, test := range tests {
+		u, err := url.Parse(test.template)
+		if err != nil {
+			t.Fatalf("error parsing URL: %v", err)
+		}
+		s := bindVariables(u, variables)
+		actual, _ := url.PathUnescape(s)
+		if actual != test.expected {
+			t.Fatalf("error, expected %q got %q", test.expected, actual)
+		}
+	}
 }
 
 func TestGetValuesFromStruct(t *testing.T) {
