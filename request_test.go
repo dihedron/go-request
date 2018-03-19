@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -405,6 +406,73 @@ func TestQueryParametersFrom(t *testing.T) {
 	New("").Add().QueryParametersFrom(&s)
 }
 
+func TestVariablesFrom(t *testing.T) {
+
+	type Nested struct {
+		Var1 string `variable:"var1"`
+		Var2 string `variable:"var2"`
+	}
+
+	type Embedded struct {
+		Var1 string `variable:"var1"`
+		Var2 string `variable:"var2"`
+	}
+
+	type Struct struct {
+		Var1 string  `variable:"var1"`
+		Var2 *string `variable:"var2"`
+		Embedded
+		Nested *Nested
+	}
+
+	s := "value2s"
+	testStruct := Struct{
+		Var1: "value1s",
+		Var2: &s,
+		Embedded: Embedded{
+			Var1: "value1e",
+			Var2: "value1e",
+		},
+		Nested: &Nested{
+			Var1: "value1n",
+			Var2: "value1n",
+		},
+	}
+
+	testMap := map[string][]string{
+		"var1": []string{"value1s", "value1e", "value1n"},
+		"var2": []string{"value2s", "value2e", "value2n"},
+	}
+
+	factories := []*Builder{
+		New("").Add().VariablesFrom(testStruct),
+		New("").Add().VariablesFrom(&testStruct),
+		New("").Add().VariablesFrom(testMap),
+		New("").Add().VariablesFrom(&testMap),
+	}
+
+	for _, f := range factories {
+		if len(f.variables) != 2 {
+			t.Fatalf("error adding variables from struct: expected 8, got %d", len(f.variables))
+		}
+		for key, actual := range testMap {
+			expected := testMap[key]
+			t.Logf("comparing %q against %q...", actual, expected)
+			if len(expected) != len(actual) {
+				t.Fatalf("error adding variables from struct: different number of expected and actual (%d != %d)", len(expected), len(actual))
+			}
+			for i := 0; i < len(expected); i++ {
+				if expected[i] != actual[i] {
+					t.Fatalf("error adding variables from struct: different values for %s: expected %s, got %s", key, expected[i], actual[i])
+				}
+			}
+		}
+	}
+
+	defer handler("only structs and maps can be passed as sources", t)
+	New("").Add().QueryParametersFrom(&s)
+}
+
 func TestAddHeader(t *testing.T) {
 	f := New("").Add().Header("key", "value1", "value2")
 	if len(f.headers) != 1 {
@@ -774,6 +842,26 @@ func TestString(t *testing.T) {
 		WithJSONEntity(entity)
 
 	t.Logf("string:\n%v", f)
+}
+
+func TestBindVariables(t *testing.T) {
+	variables := map[string]string{
+		"var1": "value1",
+		"var2": "value2",
+		"var3": "value3",
+	}
+	u, err := url.Parse("https://example.com/foo/{var1}/{var2}/{var1}/{var3}/var1/var2/{var4}/{var1}-{var3}/bar?{var4}")
+	if err != nil {
+		t.Fatalf("error parsing URL: %v", err)
+	}
+	s := bindVariables(u, variables)
+	actual, _ := url.PathUnescape(s)
+	expected := "https://example.com/foo/value1/value2/value1/value3/var1/var2/{var4}/value1-value3/bar?{var4}"
+	if actual != expected {
+		t.Fatalf("error, expected %q got %q", expected, actual)
+	}
+
+	//t.Logf("URL: %q", s)
 }
 
 func TestGetValuesFromStruct(t *testing.T) {
