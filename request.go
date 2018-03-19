@@ -557,6 +557,10 @@ func bindVariables(u *url.URL, variables map[string]string) string {
 
 	log.Debugf("URL to bind: %q", s)
 	matches := re.FindAllStringIndex(s, -1)
+	if len(matches) == 0 {
+		log.Debugf("no variabes to bind")
+		return u.String()
+	}
 	var buffer bytes.Buffer
 	pivot := 0
 	for no, match := range matches {
