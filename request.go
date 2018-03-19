@@ -558,7 +558,7 @@ func bindVariables(u *url.URL, variables map[string]string) string {
 	log.Debugf("URL to bind: %q", s)
 	matches := re.FindAllStringIndex(s, -1)
 	if len(matches) == 0 {
-		log.Debugf("no variabes to bind")
+		log.Debugf("no variables to bind, returning %q", u.String())
 		return u.String()
 	}
 	var buffer bytes.Buffer
@@ -578,7 +578,9 @@ func bindVariables(u *url.URL, variables map[string]string) string {
 		log.Debugf("... buffer now: %q", buffer.String())
 		pivot = match[1]
 	}
-	return url.PathEscape(buffer.String())
+	s = url.PathEscape(buffer.String())
+	log.Debugf("URL bound to variables, returning %q", s)
+	return s
 }
 
 // scan is the actual workhorse method: it scans the source struct for tagged
